@@ -1,5 +1,6 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
+import { useState } from 'react';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { RecordCard } from '@/components/record-card';
 import { Screen } from '@/components/screen';
@@ -17,9 +18,15 @@ export function RecordListScreen({
   sort,
 }) {
   const { records } = useRecords();
-  const visible = records.filter(filter);
-  const ordered = sort ? [...visible].sort(sort) : visible;
+  const [search, setSearch] = useState('');
 
+  const visible = records
+    .filter(filter)
+    .filter((record) =>
+      (record.person || '').toLowerCase().includes(search.trim().toLowerCase())
+    );
+
+  const ordered = sort ? [...visible].sort(sort) : visible;
   return (
     <Screen>
       <View style={styles.header}>
@@ -36,7 +43,14 @@ export function RecordListScreen({
           </Pressable>
         ) : null}
       </View>
-
+      <TextInput
+        style={styles.searchInput}
+        placeholder="Search by person's name..."
+        placeholderTextColor={colors.faint}
+        value={search}
+        onChangeText={setSearch}
+        autoCapitalize="none"
+      />
       <Text style={styles.count}>
         {ordered.length} {ordered.length === 1 ? 'record' : 'records'}
       </Text>
@@ -102,6 +116,16 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     padding: 22,
     gap: 8,
+  },
+  searchInput: {
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 15,
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+    fontSize: 15,
+    color: colors.text,
   },
   emptyTitle: {
     color: colors.text,

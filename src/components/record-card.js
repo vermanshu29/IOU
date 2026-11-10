@@ -1,8 +1,14 @@
+
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '@/constants/palette';
-import { formatDisplayDate, formatMoney, isOverdue, recordTitle } from '@/lib/records';
 import { useRecords } from '@/context/RecordsContext';
+import {
+  formatDisplayDate,
+  formatMoney,
+  isOverdue,
+  recordTitle,
+} from '@/lib/records';
 
 export function RecordCard({ record, showReturn = false }) {
   const { markReturned } = useRecords();
@@ -29,24 +35,36 @@ export function RecordCard({ record, showReturn = false }) {
             {lent ? 'I lent' : 'I borrowed'}
           </Text>
         </View>
+
         {record.returned ? (
-          <Text style={styles.returned}>Returned</Text>
+          <View style={[styles.statusBadge, styles.returnedBadge]}>
+            <Text style={styles.returned}>Returned ✓</Text>
+          </View>
         ) : overdue ? (
-          <Text style={styles.overdue}>Overdue</Text>
+          <View style={[styles.statusBadge, styles.overdueBadge]}>
+            <Text style={styles.overdue}>Overdue</Text>
+          </View>
         ) : null}
       </View>
 
       <Text style={styles.title}>{title}</Text>
-      <Text style={styles.person}>{record.person}</Text>
+      <Text style={styles.person}>With {record.person}</Text>
 
       <View style={styles.metaRow}>
         {typeof record.amount === 'number' && record.itemName ? (
           <Text style={styles.meta}>{formatMoney(record.amount)}</Text>
         ) : null}
-        <Text style={styles.meta}>{formatDisplayDate(record.date)}</Text>
+
+        <Text style={styles.meta}>
+          {formatDisplayDate(record.date)}
+        </Text>
+
         {record.returnDate && !record.returned ? (
-          <Text style={styles.meta}>Due {formatDisplayDate(record.returnDate)}</Text>
+          <Text style={styles.meta}>
+            Due {formatDisplayDate(record.returnDate)}
+          </Text>
         ) : null}
+
         {record.returned && record.returnedAt ? (
           <Text style={styles.meta}>
             Back {formatDisplayDate(record.returnedAt.slice(0, 10))}
@@ -59,8 +77,12 @@ export function RecordCard({ record, showReturn = false }) {
           accessibilityRole="button"
           accessibilityLabel={`Mark ${title} as returned`}
           onPress={confirmReturn}
-          style={({ pressed }) => [styles.returnButton, pressed && styles.pressed]}>
-          <Text style={styles.returnLabel}>Mark returned</Text>
+          style={({ pressed }) => [
+            styles.returnButton,
+            pressed && styles.pressed,
+          ]}
+        >
+          <Text style={styles.returnLabel}>✓  Mark as returned</Text>
         </Pressable>
       ) : null}
     </View>
@@ -70,86 +92,121 @@ export function RecordCard({ record, showReturn = false }) {
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.card,
-    borderRadius: 20,
+    borderRadius: 22,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: 16,
-    gap: 8,
+    padding: 18,
+    gap: 11,
     shadowColor: colors.shadow,
-    shadowOpacity: 0.22,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 4,
+    shadowOpacity: 0.14,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 3,
   },
+
   topRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 8,
   },
+
   pill: {
     borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: 13,
+    paddingVertical: 6,
   },
+
   lentPill: {
-    backgroundColor: 'rgba(39, 224, 195, 0.16)',
+    backgroundColor: '#DDF7EE',
   },
+
   borrowedPill: {
-    backgroundColor: 'rgba(128, 103, 255, 0.2)',
+    backgroundColor: '#EEE5FF',
   },
+
   pillText: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '800',
   },
+
   lentText: {
-    color: colors.teal,
+    color: '#28765D',
   },
+
   borrowedText: {
-    color: '#C4B6FF',
+    color: '#6946A5',
   },
+
+  statusBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+  },
+
+  returnedBadge: {
+    backgroundColor: '#DDF7EE',
+  },
+
+  overdueBadge: {
+    backgroundColor: '#FFF0D9',
+  },
+
   returned: {
-    color: colors.teal,
+    color: '#28765D',
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '800',
   },
+
   overdue: {
-    color: colors.warning,
+    color: '#A35D16',
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '800',
   },
+
   title: {
     color: colors.text,
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 21,
+    fontWeight: '800',
+    letterSpacing: -0.4,
   },
+
   person: {
     color: colors.muted,
     fontSize: 15,
+    fontWeight: '500',
   },
+
   metaRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
+    marginTop: 3,
   },
+
   meta: {
-    color: colors.faint,
+    color: colors.muted,
     fontSize: 13,
+    fontWeight: '500',
   },
+
   returnButton: {
-    marginTop: 6,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.teal,
-    paddingVertical: 12,
+    marginTop: 8,
+    borderRadius: 15,
+    backgroundColor: '#BCEBD8',
+    paddingVertical: 15,
     alignItems: 'center',
+    justifyContent: 'center',
   },
+
   returnLabel: {
-    color: colors.teal,
+    color: '#245C49',
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '800',
   },
+
   pressed: {
     opacity: 0.75,
+    transform: [{ scale: 0.98 }],
   },
 });

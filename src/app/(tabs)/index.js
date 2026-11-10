@@ -1,6 +1,6 @@
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import { useState } from 'react';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { RecordCard } from '@/components/record-card';
 import { Screen } from '@/components/screen';
@@ -14,6 +14,21 @@ export default function HomeScreen() {
   const theyOwe = sumOutstanding(records, 'lent');
   const iOwe = sumOutstanding(records, 'borrowed');
   const recent = records.slice(0, 4);
+  const totalLent = records
+    .filter(r => r.type === 'lent')
+    .reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+
+  const totalBorrowed = records
+    .filter(r => r.type === 'borrowed')
+    .reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+
+  const pendingCount = records.filter(r => !r.returned).length;
+  const returnedCount = records.filter(r => r.returned).length;
+
+  const totalRecords = records.length;
+  const returnedPercent = totalRecords
+    ? Math.round((returnedCount / totalRecords) * 100)
+    : 0;
 
   function openQuickAdd(type) {
     router.push({
@@ -29,9 +44,9 @@ export default function HomeScreen() {
     <Screen>
       <View style={styles.header}>
         <Text style={styles.kicker}>Your ledger</Text>
-        <Text style={styles.title}>Who Has My Stuff?</Text>
+        <Text style={styles.title}>Lend.Borrow.Remember</Text>
         <Text style={styles.subtitle}>
-          Keep track of what you lend, what you borrow, and what has already come back.
+          Never lose track of who has what.
         </Text>
       </View>
 
@@ -55,16 +70,15 @@ export default function HomeScreen() {
       </View>
 
       <View style={styles.quickAdd}>
-        <Text style={styles.quickKicker}>AI Quick Add</Text>
+        <Text style={styles.quickKicker}>QUICK ADD</Text>
         <Text style={styles.quickTitle}>What changed hands?</Text>
         <Text style={styles.quickBody}>
-          Write a short note, then choose who owes whom. The form opens with your note filled in.
-          Smart parsing comes later.
+          Add a quick note about something you lent or borrowed.
         </Text>
         <TextInput
           value={note}
           onChangeText={setNote}
-          placeholder="Headphones, or $20 for lunch"
+          placeholder="Headphones, or ₹20 for lunch"
           placeholderTextColor={colors.faint}
           style={styles.input}
           returnKeyType="done"
@@ -87,6 +101,49 @@ export default function HomeScreen() {
           <Text style={styles.link}>Open the full form</Text>
         </Pressable>
       </View>
+      <View style={styles.statsSection}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Your Statistics</Text>
+          <Text style={styles.statsCaption}>All time</Text>
+        </View>
+
+        <View style={styles.statsGrid}>
+          <View style={[styles.statCard, styles.mintCard]}>
+            <Text style={styles.statLabel}>Total Lent</Text>
+            <Text style={styles.statAmount}>{formatMoney(totalLent)}</Text>
+          </View>
+
+          <View style={[styles.statCard, styles.lavenderCard]}>
+            <Text style={styles.statLabel}>Total Borrowed</Text>
+            <Text style={styles.statAmount}>{formatMoney(totalBorrowed)}</Text>
+          </View>
+
+          <View style={[styles.statCard, styles.peachCard]}>
+            <Text style={styles.statLabel}>Pending Records</Text>
+            <Text style={styles.statNumber}>{pendingCount}</Text>
+          </View>
+
+          <View style={[styles.statCard, styles.greenCard]}>
+            <Text style={styles.statLabel}>Returned Records</Text>
+            <Text style={styles.statNumber}>{returnedCount}</Text>
+          </View>
+        </View>
+
+        <View style={styles.progressCard}>
+          <View style={styles.progressHeader}>
+            <Text style={styles.progressTitle}>Return Progress</Text>
+            <Text style={styles.progressPercent}>{returnedPercent}%</Text>
+          </View>
+
+          <View style={styles.progressTrack}>
+            <View style={[styles.progressFill, { width: `${returnedPercent}%` }]} />
+          </View>
+
+          <Text style={styles.progressHint}>
+            {returnedCount} of {totalRecords} records returned
+          </Text>
+        </View>
+      </View>
 
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Recent activity</Text>
@@ -106,19 +163,30 @@ export default function HomeScreen() {
   );
 }
 
+
 function SummaryCard({ label, amount, detail, accent, onPress }) {
   return (
     <Pressable
       accessibilityRole="button"
       onPress={onPress}
-      style={({ pressed }) => [styles.summary, pressed && styles.pressed]}>
-      <View style={[styles.accentBar, { backgroundColor: accent }]} />
+      style={({ pressed }) => [
+        styles.summary,
+        { borderColor: accent === colors.teal ? '#BCEBD8' : '#CDB9F4' },
+        pressed && styles.pressed,
+      ]}
+    >
+      <View style={styles.summaryTop}>
+        <View style={[styles.accentBar, { backgroundColor: accent }]} />
+        <Text style={styles.summaryArrow}>↗</Text>
+      </View>
+
       <Text style={styles.summaryLabel}>{label}</Text>
       <Text style={styles.summaryAmount}>{amount}</Text>
       <Text style={styles.summaryDetail}>{detail}</Text>
     </Pressable>
   );
 }
+
 
 const styles = StyleSheet.create({
   header: {
@@ -132,11 +200,10 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   title: {
+    fontSize: 28,
+    fontWeight: '700',
+    letterSpacing: -0.6,
     color: colors.text,
-    fontSize: 34,
-    lineHeight: 40,
-    fontWeight: '800',
-    letterSpacing: -0.8,
   },
   subtitle: {
     color: colors.muted,
@@ -146,7 +213,7 @@ const styles = StyleSheet.create({
   error: {
     color: colors.danger,
     fontSize: 14,
-    lineHeight: 20,
+    lineHeight: 18,
   },
   summaryRow: {
     flexDirection: 'row',
@@ -257,10 +324,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   link: {
-    color: colors.teal,
-    fontSize: 14,
+    color: '#7652B5',
+    fontSize: 17,
     fontWeight: '700',
+    letterSpacing: 0.3,
     textAlign: 'center',
+    paddingVertical: 8,
   },
   sectionHeader: {
     marginTop: 4,
@@ -290,5 +359,94 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.82,
+  },
+  statsSection: {
+    marginTop: 20,
+    marginBottom: 8,
+  },
+  statsCaption: {
+    fontSize: 13,
+    color: colors.muted,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginTop: 10,
+  },
+  statCard: {
+    width: '48%',
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 4,
+  },
+  mintCard: {
+    backgroundColor: '#D1FAE5',
+  },
+  lavenderCard: {
+    backgroundColor: '#EDE9FE',
+  },
+  peachCard: {
+    backgroundColor: '#FFEDD5',
+  },
+  greenCard: {
+    backgroundColor: '#E0F2FE',
+  },
+  statLabel: {
+    fontSize: 13,
+    color: '#4B5563',
+    fontWeight: '500',
+    marginBottom: 6,
+  },
+  statAmount: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  statNumber: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  progressCard: {
+    marginTop: 12,
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: '#F5F3FF',
+    borderWidth: 1,
+    borderColor: '#DDD6FE',
+  },
+  progressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  progressTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  progressPercent: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#6D28D9',
+  },
+  progressTrack: {
+    height: 8,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 999,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#8B5CF6',
+    borderRadius: 999,
+  },
+  progressHint: {
+    fontSize: 12,
+    color: colors.muted,
   },
 });

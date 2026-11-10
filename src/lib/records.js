@@ -2,6 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const STORAGE_KEY = 'who-has-my-stuff.records.v1';
 
+const RATINGS_KEY = 'who-has-my-stuff.ratings.v1';
+
 export async function loadRecords() {
   const raw = await AsyncStorage.getItem(STORAGE_KEY);
   if (!raw) {
@@ -56,10 +58,13 @@ export function formatDisplayDate(value) {
 
 export function formatMoney(amount) {
   const value = Number(amount) || 0;
-  return `$${value.toLocaleString(undefined, {
-    minimumFractionDigits: 2,
+
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    minimumFractionDigits: 0,
     maximumFractionDigits: 2,
-  })}`;
+  }).format(value);
 }
 
 export function recordTitle(record) {
@@ -88,3 +93,15 @@ export function sumOutstanding(records, type) {
 export function countOpen(records, type) {
   return records.filter((record) => record.type === type && !record.returned).length;
 }
+export async function loadRatings() {
+  const raw = await AsyncStorage.getItem(RATINGS_KEY);
+  if (!raw) return [];
+
+  const parsed = JSON.parse(raw);
+  return Array.isArray(parsed) ? parsed : [];
+}
+
+export async function saveRatings(ratings) {
+  await AsyncStorage.setItem(RATINGS_KEY, JSON.stringify(ratings));
+}
+

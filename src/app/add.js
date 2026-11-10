@@ -6,6 +6,7 @@ import { Screen } from '@/components/screen';
 import { colors } from '@/constants/palette';
 import { useRecords } from '@/context/RecordsContext';
 import { isISODate, todayISO } from '@/lib/records';
+import { scheduleReminder } from '@/lib/reminders';
 
 function firstParam(value) {
   if (Array.isArray(value)) {
@@ -26,7 +27,7 @@ export default function AddRecordScreen() {
   const [returnDate, setReturnDate] = useState('');
   const [errors, setErrors] = useState({});
 
-  function save() {
+  async function save() {
     const nextErrors = {};
     const cleanItem = itemName.trim();
     const cleanPerson = person.trim();
@@ -70,7 +71,7 @@ export default function AddRecordScreen() {
       return;
     }
 
-    addRecord({
+    const record = addRecord({
       itemName: cleanItem,
       amount: parsedAmount,
       person: cleanPerson,
@@ -78,230 +79,252 @@ export default function AddRecordScreen() {
       date,
       returnDate: cleanReturn || null,
     });
+
+    try {
+      await scheduleReminder({
+        ...record,
+        item: record.itemName,
+      });
+    } catch (error) {
+      console.log('Reminder scheduling failed:', error);
+    }
+
     router.back();
   }
 
-  return (
-    <Screen
-      bottomInset={24}
-      footer={
-        <View style={styles.footer}>
-          {Object.keys(errors).length > 0 ? (
-            <Text style={styles.footerError}>Check the highlighted fields, then save again.</Text>
-          ) : null}
-          <Pressable
-            accessibilityRole="button"
-            onPress={save}
-            style={({ pressed }) => [styles.save, pressed && styles.pressed]}>
-            <Text style={styles.saveLabel}>Save record</Text>
+    return (
+      <Screen
+        bottomInset={24}
+        footer={
+          <View style={styles.footer}>
+            {Object.keys(errors).length > 0 ? (
+              <Text style={styles.footerError}>Check the highlighted fields, then save again.</Text>
+            ) : null}
+            <Pressable
+              accessibilityRole="button"
+              onPress={save}
+              style={({ pressed }) => [styles.save, pressed && styles.pressed]}>
+              <Text style={styles.saveLabel}>Save record</Text>
+            </Pressable>
+          </View>
+        }>
+        <View style={styles.topBar}>
+          <Pressable accessibilityRole="button" onPress={() => router.back()} hitSlop={8}>
+            <Text style={styles.cancel}>Cancel</Text>
           </Pressable>
         </View>
-      }>
-      <View style={styles.topBar}>
-        <Pressable accessibilityRole="button" onPress={() => router.back()} hitSlop={8}>
-          <Text style={styles.cancel}>Cancel</Text>
-        </Pressable>
-      </View>
-      <Text style={styles.title}>Add record</Text>
-      <Text style={styles.subtitle}>A name, a person, and whether you lent or borrowed is enough.</Text>
+        <Text style={styles.title}>Add record</Text>
+        <Text style={styles.subtitle}>A name, a person, and whether you lent or borrowed is enough.</Text>
 
-      <Field
-        label="Item name"
-        value={itemName}
-        onChangeText={setItemName}
-        placeholder="Camera, jacket, textbook"
-        error={errors.itemName}
-      />
-      <Field
-        label="Money amount"
-        value={amount}
-        onChangeText={setAmount}
-        placeholder="20.00"
-        keyboardType="decimal-pad"
-        error={errors.amount}
-      />
-      <Text style={styles.hint}>Fill in the item, the amount, or both.</Text>
-
-      <Field
-        label="Person"
-        value={person}
-        onChangeText={setPerson}
-        placeholder="Alex"
-        error={errors.person}
-      />
-
-      <Text style={styles.label}>Transaction</Text>
-      <View style={styles.segment}>
-        <SegmentButton label="I Lent" selected={type === 'lent'} onPress={() => setType('lent')} tone="teal" />
-        <SegmentButton
-          label="I Borrowed"
-          selected={type === 'borrowed'}
-          onPress={() => setType('borrowed')}
-          tone="purple"
+        <Field
+          label="Item name"
+          value={itemName}
+          onChangeText={setItemName}
+          placeholder="Camera, jacket, textbook"
+          error={errors.itemName}
         />
+        <Field
+          label="Money amount"
+          value={amount}
+          onChangeText={setAmount}
+          placeholder="20.00"
+          keyboardType="decimal-pad"
+          error={errors.amount}
+        />
+        <Text style={styles.hint}>Fill in the item, the amount, or both.</Text>
+
+        <Field
+          label="Person"
+          value={person}
+          onChangeText={setPerson}
+          placeholder="Alex"
+          error={errors.person}
+        />
+
+        <Text style={styles.label}>Transaction</Text>
+        <View style={styles.segment}>
+          <SegmentButton label="I Lent" selected={type === 'lent'} onPress={() => setType('lent')} tone="teal" />
+          <SegmentButton
+            label="I Borrowed"
+            selected={type === 'borrowed'}
+            onPress={() => setType('borrowed')}
+            tone="purple"
+          />
+        </View>
+        {errors.type ? <Text style={styles.error}>{errors.type}</Text> : null}
+
+        <Field
+          label="Date"
+          value={date}
+          onChangeText={setDate}
+          placeholder="2026-11-10"
+          autoCapitalize="none"
+          error={errors.date}
+        />
+        <Field
+          label="Return date (optional)"
+          value={returnDate}
+          onChangeText={setReturnDate}
+          placeholder="2026-11-20"
+          autoCapitalize="none"
+          error={errors.returnDate}
+        />
+      </Screen>
+    );
+  }
+
+  function Field({ label, error, ...inputProps }) {
+    return (
+      <View style={styles.field}>
+        <Text style={styles.label}>{label}</Text>
+        <TextInput
+          placeholderTextColor={colors.faint}
+          style={[styles.input, error && styles.inputError]}
+          {...inputProps}
+        />
+        {error ? <Text style={styles.error}>{error}</Text> : null}
       </View>
-      {errors.type ? <Text style={styles.error}>{errors.type}</Text> : null}
+    );
+  }
 
-      <Field
-        label="Date"
-        value={date}
-        onChangeText={setDate}
-        placeholder="2026-11-10"
-        autoCapitalize="none"
-        error={errors.date}
-      />
-      <Field
-        label="Return date (optional)"
-        value={returnDate}
-        onChangeText={setReturnDate}
-        placeholder="2026-11-20"
-        autoCapitalize="none"
-        error={errors.returnDate}
-      />
-    </Screen>
-  );
-}
+  function SegmentButton({ label, selected, onPress, tone }) {
+    const selectedStyle = tone === 'purple' ? styles.segmentPurple : styles.segmentTeal;
+    const selectedText = tone === 'purple' ? styles.segmentPurpleText : styles.segmentTealText;
 
-function Field({ label, error, ...inputProps }) {
-  return (
-    <View style={styles.field}>
-      <Text style={styles.label}>{label}</Text>
-      <TextInput
-        placeholderTextColor={colors.faint}
-        style={[styles.input, error && styles.inputError]}
-        {...inputProps}
-      />
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-    </View>
-  );
-}
+    return (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ selected }}
+        onPress={onPress}
+        style={({ pressed }) => [
+          styles.segmentButton,
+          selected && selectedStyle,
+          pressed && styles.pressed,
+        ]}>
+        <Text style={[styles.segmentLabel, selected && selectedText]}>{label}</Text>
+      </Pressable>
+    );
+  }
 
-function SegmentButton({ label, selected, onPress, tone }) {
-  const selectedStyle = tone === 'purple' ? styles.segmentPurple : styles.segmentTeal;
-  const selectedText = tone === 'purple' ? styles.segmentPurpleText : styles.segmentTealText;
 
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ selected }}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.segmentButton,
-        selected && selectedStyle,
-        pressed && styles.pressed,
-      ]}>
-      <Text style={[styles.segmentLabel, selected && selectedText]}>{label}</Text>
-    </Pressable>
-  );
-}
+  const styles = StyleSheet.create({
+    topBar: {
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      marginBottom: 4,
+    },
+    cancel: {
+      color: '#7652B5',
+      fontSize: 15,
+      fontWeight: '700',
+      padding: 6,
+    },
+    title: {
+      color: '#302744',
+      fontSize: 32,
+      fontWeight: '800',
+      letterSpacing: -0.8,
+    },
+    subtitle: {
+      color: '#82758F',
+      fontSize: 15,
+      lineHeight: 23,
+      marginTop: -8,
+      marginBottom: 8,
+    },
+    field: {
+      gap: 9,
+      marginBottom: 5,
+    },
+    label: {
+      color: '#503879',
+      fontSize: 15,
+      fontWeight: '800',
+    },
+    hint: {
+      color: '#95889F',
+      fontSize: 13,
+      marginTop: -10,
+      marginBottom: 4,
+    },
+    input: {
+      backgroundColor: '#F5F0FC',
+      borderWidth: 1,
+      borderColor: '#E7DDF3',
+      borderRadius: 17,
+      color: '#302744',
+      fontSize: 16,
+      paddingHorizontal: 17,
+      paddingVertical: 17,
+    },
+    inputError: {
+      borderColor: '#F28B9B',
+    },
+    error: {
+      color: '#D65C75',
+      fontSize: 13,
+      lineHeight: 18,
+    },
+    segment: {
+      flexDirection: 'row',
+      gap: 12,
+    },
+    segmentButton: {
+      flex: 1,
+      borderRadius: 17,
+      borderWidth: 1.5,
+      borderColor: '#E7DDF3',
+      backgroundColor: '#F5F0FC',
+      paddingVertical: 17,
+      alignItems: 'center',
+    },
+    segmentTeal: {
+      backgroundColor: '#BCEBD8',
+      borderColor: '#BCEBD8',
+    },
+    segmentPurple: {
+      backgroundColor: '#CDB9F4',
+      borderColor: '#CDB9F4',
+    },
+    segmentLabel: {
+      color: '#82758F',
+      fontWeight: '800',
+      fontSize: 15,
+    },
+    segmentTealText: {
+      color: '#245C49',
+    },
+    segmentPurpleText: {
+      color: '#503879',
+    },
+    footer: {
+      gap: 10,
+      maxWidth: 640,
+      width: '100%',
+      alignSelf: 'center',
+    },
+    footerError: {
+      color: '#D65C75',
+      fontSize: 13,
+    },
+    save: {
+      backgroundColor: '#7652B5',
+      borderRadius: 17,
+      paddingVertical: 17,
+      alignItems: 'center',
+      shadowColor: '#7652B5',
+      shadowOpacity: 0.2,
+      shadowRadius: 9,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 3,
+    },
+    saveLabel: {
+      color: '#FFFFFF',
+      fontSize: 17,
+      fontWeight: '800',
+    },
+    pressed: {
+      opacity: 0.78,
+    },
+  });
 
-const styles = StyleSheet.create({
-  topBar: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-  },
-  cancel: {
-    color: colors.muted,
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  title: {
-    color: colors.text,
-    fontSize: 32,
-    fontWeight: '800',
-    letterSpacing: -0.6,
-  },
-  subtitle: {
-    color: colors.muted,
-    fontSize: 15,
-    lineHeight: 22,
-    marginTop: -8,
-  },
-  field: {
-    gap: 8,
-  },
-  label: {
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  hint: {
-    color: colors.faint,
-    fontSize: 13,
-    marginTop: -8,
-  },
-  input: {
-    backgroundColor: colors.input,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 14,
-    color: colors.text,
-    fontSize: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-  },
-  inputError: {
-    borderColor: colors.danger,
-  },
-  error: {
-    color: colors.danger,
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  segment: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  segmentButton: {
-    flex: 1,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.input,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  segmentTeal: {
-    backgroundColor: colors.teal,
-    borderColor: colors.teal,
-  },
-  segmentPurple: {
-    backgroundColor: colors.purple,
-    borderColor: colors.purple,
-  },
-  segmentLabel: {
-    color: colors.muted,
-    fontWeight: '800',
-    fontSize: 15,
-  },
-  segmentTealText: {
-    color: colors.tealInk,
-  },
-  segmentPurpleText: {
-    color: colors.purpleInk,
-  },
-  footer: {
-    gap: 10,
-    maxWidth: 640,
-    width: '100%',
-    alignSelf: 'center',
-  },
-  footerError: {
-    color: colors.danger,
-    fontSize: 13,
-  },
-  save: {
-    backgroundColor: colors.teal,
-    borderRadius: 16,
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-  saveLabel: {
-    color: colors.tealInk,
-    fontSize: 17,
-    fontWeight: '800',
-  },
-  pressed: {
-    opacity: 0.82,
-  },
-});
